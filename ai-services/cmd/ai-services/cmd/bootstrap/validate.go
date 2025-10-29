@@ -70,6 +70,7 @@ Available checks to skip:
   
   # Run with verbose output
   aiservices bootstrap validate --verbose`,
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			// TODO: use klog structured logging

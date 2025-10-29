@@ -13,9 +13,10 @@ import (
 // validateCmd represents the validate subcommand of bootstrap
 func configureCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "configure",
-		Short: "configures the LPAR environment",
-		Long:  `Configure and initialize the LPAR.`,
+		Use:    "configure",
+		Short:  "configures the LPAR environment",
+		Long:   `Configure and initialize the LPAR.`,
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			logger.Info("Running bootstrap configuration...")
@@ -50,7 +51,6 @@ func configureCmd() *cobra.Command {
 				logger.Info("✅ Spyre cards configuration validated successfully.")
 			}
 
-			// 3. Check SMT level and set the SMT to 2
 			logger.Info("✅ Bootstrap configuration completed successfully.")
 			return nil
 		},

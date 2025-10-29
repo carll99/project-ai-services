@@ -25,6 +25,7 @@ Available subcommands:
 
   # Get help on a specific subcommand
   aiservices bootstrap validate --help`,
+		Hidden: true,
 	}
 
 	// subcommands
