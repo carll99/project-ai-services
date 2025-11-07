@@ -7,13 +7,19 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+
+	"github.com/project-ai-services/ai-services/internal/pkg/constants"
 )
 
-func RunPodmanKubePlay(body io.Reader) (*KubePlayOutput, error) {
-	cmdName := "podman"
-	cmdArgs := []string{"kube", "play", "-"}
+const (
+	startFlagTrue  = "--start=true"
+	startFlagFalse = "--start=false"
+)
 
-	cmd := exec.Command(cmdName, cmdArgs...)
+func RunPodmanKubePlay(body io.Reader, opts map[string]string) (*KubePlayOutput, error) {
+	cmdName := "podman"
+
+	cmd := exec.Command(cmdName, buildCmdArgs(opts)...)
 
 	cmd.Stdin = body
 
@@ -72,4 +78,22 @@ func extractPodIDsFromOutput(output string) []string {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+func buildCmdArgs(opts map[string]string) []string {
+	cmdArgs := []string{"kube", "play"}
+
+	if v, ok := opts["start"]; ok {
+		switch v {
+		case constants.PodStartOff:
+			cmdArgs = append(cmdArgs, startFlagFalse)
+		case constants.PodStartOn:
+			cmdArgs = append(cmdArgs, startFlagTrue)
+		default:
+			// by default go with start set to true
+			cmdArgs = append(cmdArgs, startFlagTrue)
+		}
+	}
+
+	return append(cmdArgs, "-")
 }

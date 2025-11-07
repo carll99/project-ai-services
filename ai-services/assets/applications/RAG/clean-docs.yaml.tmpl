@@ -4,6 +4,8 @@ metadata:
   name: "{{ .AppName }}--clean-docs"
   labels:
     ai-services.io/application: "{{ .AppName }}"
+  annotations:
+    ai-services.io/start: "off"
 spec:
   containers:
     - name: clean-docs

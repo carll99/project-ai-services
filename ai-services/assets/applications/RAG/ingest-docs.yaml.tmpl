@@ -4,6 +4,8 @@ metadata:
   name: "{{ .AppName }}--ingest-docs"
   labels:
     ai-services.io/application: "{{ .AppName }}"
+  annotations:
+    ai-services.io/start: "off"
 spec:
   containers:
     - name: ingest-docs

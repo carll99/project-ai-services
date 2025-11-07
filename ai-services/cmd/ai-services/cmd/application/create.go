@@ -351,8 +351,17 @@ func executePodTemplates(runtime runtime.Runtime, appName string, podTemplateExe
 
 				podTemplateFilePath := podTemplatesPath + "/" + podTemplateName
 
+				// fetch pod Spec
+				podSpec, err := fetchPodSpec(podTemplateFilePath)
+				if err != nil {
+					errCh <- err
+				}
+
+				// fetch annotations from pod Spec
+				podAnnotations := fetchPodAnnotations(podSpec)
+
 				// get the env params for a given pod
-				env, err := returnEnvParamsForPod(podTemplateFilePath, &pciAddresses)
+				env, err := returnEnvParamsForPod(podSpec, podAnnotations, &pciAddresses)
 				if err != nil {
 					errCh <- err
 				}
@@ -368,7 +377,8 @@ func executePodTemplates(runtime runtime.Runtime, appName string, podTemplateExe
 				// Wrap the bytes in a bytes.Reader
 				reader := bytes.NewReader(rendered.Bytes())
 
-				if err := deployPodAndReadinessCheck(runtime, podTemplateName, reader); err != nil {
+				// Deploy the Pod and do Readiness check
+				if err := deployPodAndReadinessCheck(runtime, podTemplateName, reader, constructPodDeployOptions(podAnnotations)); err != nil {
 					errCh <- err
 				}
 			}(podTemplateName)
@@ -394,9 +404,9 @@ func executePodTemplates(runtime runtime.Runtime, appName string, podTemplateExe
 	return nil
 }
 
-func deployPodAndReadinessCheck(runtime runtime.Runtime, name string, body io.Reader) error {
+func deployPodAndReadinessCheck(runtime runtime.Runtime, name string, body io.Reader, opts map[string]string) error {
 
-	kubeReport, err := podman.RunPodmanKubePlay(body)
+	kubeReport, err := podman.RunPodmanKubePlay(body, opts)
 	if err != nil {
 		return fmt.Errorf("failed pod creation: %w", err)
 	}
@@ -499,14 +509,22 @@ func fetchSpyreCardsFromPodAnnotations(annotations map[string]string) (int, map[
 	return spyreCards, spyreCardContainerMap, nil
 }
 
-func returnEnvParamsForPod(podTemplateFilePath string, pciAddresses *[]string) (map[string]map[string]string, error) {
-	env := map[string]map[string]string{}
+func fetchPodSpec(podTemplateFilePath string) (*helpers.PodSpec, error) {
 	podSpec, err := helpers.LoadPodTemplate(podTemplateFilePath)
 	if err != nil {
-		return env, fmt.Errorf("failed to load pod Template: %s with error: %w", podTemplateFilePath, err)
+		return nil, fmt.Errorf("failed to load pod Template: %s with error: %w", podTemplateFilePath, err)
 	}
 
-	podAnnotations := helpers.FetchPodAnnotations(*podSpec)
+	return podSpec, nil
+}
+
+func fetchPodAnnotations(podSpec *helpers.PodSpec) map[string]string {
+	return helpers.FetchPodAnnotations(*podSpec)
+}
+
+func returnEnvParamsForPod(podSpec *helpers.PodSpec, podAnnotations map[string]string, pciAddresses *[]string) (map[string]map[string]string, error) {
+
+	env := map[string]map[string]string{}
 	podContainerNames := helpers.FetchContainerNames(*podSpec)
 
 	// populate env with empty map
@@ -536,4 +554,24 @@ func returnEnvParamsForPod(podTemplateFilePath string, pciAddresses *[]string) (
 	envMutex.Unlock()
 
 	return env, nil
+}
+
+func checkForPodStartAnnotation(podAnnotations map[string]string) string {
+	if val, ok := podAnnotations[constants.PodStartAnnotationkey]; ok {
+		if val == constants.PodStartOff || val == constants.PodStartOn {
+			return val
+		}
+	}
+	return ""
+}
+
+func constructPodDeployOptions(podAnnotations map[string]string) map[string]string {
+	podStart := checkForPodStartAnnotation(podAnnotations)
+
+	podDeployOptions := map[string]string{}
+	if podStart != "" {
+		podDeployOptions["start"] = podStart
+	}
+
+	return podDeployOptions
 }
